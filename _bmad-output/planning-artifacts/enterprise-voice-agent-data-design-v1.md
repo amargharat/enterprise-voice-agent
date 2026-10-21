@@ -3,7 +3,7 @@ artifact-type: data-design
 subject: Enterprise AI Loan Servicing Assistant (POC): mock enterprise systems and conversation platform
 version: 1
 supersedes: none
-generated-by: haptiq-bmad-generate-data-design
+generated-by: h-bmad-generate-data-design
 source-design:
   - enterprise-voice-agent-system-design-v1.md
   - tool-platform-enterprise-systems-integration-design-v1.md

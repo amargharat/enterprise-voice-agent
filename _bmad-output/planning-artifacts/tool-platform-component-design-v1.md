@@ -3,7 +3,7 @@ artifact-type: component-design
 subject: Tool Platform (ToolGateway), the reusable capability from ADR-003
 version: 1
 supersedes: none
-generated-by: haptiq-bmad-generate-component-design
+generated-by: h-bmad-generate-component-design
 source-design:
   - enterprise-voice-agent-system-design-v1.md
   - tool-platform-enterprise-systems-integration-design-v1.md

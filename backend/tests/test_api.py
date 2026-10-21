@@ -104,6 +104,44 @@ def test_non_applicable_foreclosure_rule_offers_confirmed_human_handoff():
         assert result["action"]["summary"].startswith("Ask a loan servicing specialist")
 
 
+def test_generic_service_request_clarifies_then_prepares_confirmable_ticket():
+    with TestClient(main.app) as client:
+        session_id = verified_session(client)
+        payload = {"sessionId": session_id, "workflowId": "loan-servicing"}
+        clarification = client.post("/api/chat", json={**payload, "message": "I want to raise a request"}).json()
+        assert clarification["action"] is None
+        assert "describe the request" in clarification["answer"].lower()
+
+        prepared = client.post("/api/chat", json={**payload, "message": "Update my mailing address"}).json()
+        assert prepared["action"]["actionType"] == "TICKET"
+        assert "update mailing address" in prepared["action"]["summary"].lower()
+
+        submitted = client.post("/api/actions/confirm", json={"sessionId": session_id, "token": prepared["action"]["token"]}).json()
+        assert submitted["reference"].startswith("SR-")
+        assert submitted["status"] == "OPEN"
+
+
+def test_service_request_can_be_cancelled_after_clarification():
+    with TestClient(main.app) as client:
+        session_id = verified_session(client)
+        payload = {"sessionId": session_id, "workflowId": "loan-servicing"}
+        client.post("/api/chat", json={**payload, "message": "Open a service request"})
+        cancelled = client.post("/api/chat", json={**payload, "message": "Cancel that"}).json()
+        assert "cancelled" in cancelled["answer"].lower()
+        assert cancelled["action"] is None
+
+
+def test_specific_service_request_is_prepared_in_credit_card_workflow():
+    with TestClient(main.app) as client:
+        session_id = verified_session(client, "credit-card")
+        result = client.post("/api/chat", json={
+            "sessionId": session_id, "workflowId": "credit-card",
+            "message": "Raise a request to update my mailing address",
+        }).json()
+        assert result["action"]["actionType"] == "TICKET"
+        assert "card servicing specialist" in result["action"]["summary"].lower()
+
+
 def test_unknown_write_outcome_can_retry_same_confirmation(monkeypatch):
     original = main.gateway.execute_write
     calls = 0

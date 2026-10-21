@@ -1,14 +1,14 @@
 # ─────────────────────────────────────────────────────────────────
-# Haptiq BMAD — project env file.
+# h BMAD — project env file.
 #
 # The PROJECT LEAD fills this in ONCE and commits it. Every associate on the
 # project inherits these exact settings — no per-user configuration, no drift.
 #
-# Location: _bmad/custom/haptiq-project.toml  (committed; the installer never
-# touches _bmad/custom/). `haptiq-bmad-init` reads this to generate the shared
+# Location: _bmad/custom/h-project.toml  (committed; the installer never
+# touches _bmad/custom/). `h-bmad-init` reads this to generate the shared
 # project-context.md.
 #
-# Replace every  TODO  with a real value, then run:  haptiq-bmad-init
+# Replace every  TODO  with a real value, then run:  h-bmad-init
 # ─────────────────────────────────────────────────────────────────
 
 [project]
@@ -56,7 +56,7 @@ coverage_command  = ""           # e.g. "npm run test:coverage", "pytest --cov".
 # of them blank to be asked at the time. NEVER put an API token here — this file is
 # committed; the Confluence token comes from your shell environment
 # ($CONFLUENCE_API_TOKEN), not from this file.
-confluence_base_url = ""         # e.g. "https://haptiq.atlassian.net"
+confluence_base_url = ""         # e.g. "https://h.atlassian.net"
 confluence_space    = ""         # space key, e.g. "PROJ"
 confluence_parent   = ""         # page ID or title that published artifacts get filed under
 gdrive_folder       = ""         # Drive folder link or ID for uploaded artifacts

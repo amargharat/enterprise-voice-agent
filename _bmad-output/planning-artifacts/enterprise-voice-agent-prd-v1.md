@@ -3,7 +3,7 @@ artifact-type: prd
 subject: Enterprise AI Loan Servicing Assistant (POC)
 version: 1
 supersedes: none
-generated-by: haptiq-bmad-create-prd-spec-doc
+generated-by: h-bmad-create-prd-spec-doc
 ticket: none
 ---
 

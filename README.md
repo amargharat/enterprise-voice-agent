@@ -31,16 +31,28 @@ Postgres and Redis stay private on the Compose network. The app, mock API, and o
 - Customer IDs: `CU-2291` or `CU-3140`; demo code: `246810`.
 - Ask “Why did my EMI change? What would ₹50,000 prepaid save?” to see tool-backed loan/rate/payment/policy evidence and deterministic `Decimal` results.
 - Ask “Show my failed payments”, then “Raise a dispute on the second one”. The six-month result list is retained as turn context; review and confirm the exact reference.
+- Say “I want to raise a request”, describe what you need, then review and confirm the service ticket to receive a reference and status.
 - Switch to Credit card to see statement transactions, then dispute a specific `TX-…` item through the same gateway.
 - Ask about foreclosure eligibility to see the evaluated rule and clause citation.
 - Toggle Payments outage to test partial failure and honest fallback behavior.
 - Voice audio uses WebSocket frames and provider-neutral STT/TTS adapters when endpoints are configured. Without server STT configuration, the UI uses browser speech recognition as a clearly labeled local fallback; text and transcript turns share the same WebSocket orchestrator.
 
-## Provider configuration
+## Local Ollama setup
 
-Provider selection and credentials are intentionally unconfirmed in the system design. Set these in `.env` only after choosing approved providers; never commit credentials:
+The default `.env` values use Ollama on the Mac host for LLM intent/tool planning and answer wording; the backend container reaches it at `http://host.docker.internal:11435/v1`. Install Ollama, make its API reachable from Docker, start its service, and download the configured model:
 
-- `LLM_BASE_URL`, `LLM_API_KEY`, and `LLM_MODEL`: OpenAI-compatible chat-completions endpoint used for intent/tool planning. The local deterministic planner remains available when unset.
+```sh
+brew install ollama
+launchctl setenv OLLAMA_HOST 0.0.0.0:11435
+brew services restart ollama
+ollama pull qwen2.5:3b
+```
+
+The Ollama API has no built-in authentication. Binding to `0.0.0.0` is needed for Docker Desktop host access, so use this only on a trusted development machine/network and never expose it as a production service. Port `11435` avoids the default Ollama port if it is already occupied. Restart the app stack with `docker-compose up --build` after changing provider settings. The first model response can be slow while Ollama loads weights; the backend allows up to 30 seconds and falls back to its deterministic planner/templates if Ollama is unavailable or rejects a response. Ollama serves locally and does not require a cloud API key; `LLM_API_KEY=ollama` is a compatibility placeholder.
+
+The `.env` provider values can be changed if needed:
+
+- `LLM_BASE_URL`, `LLM_API_KEY`, and `LLM_MODEL`: OpenAI-compatible chat-completions endpoint used for intent/tool planning and optional answer wording. The local deterministic planner remains available if Ollama is stopped or unset.
 - `STT_ENDPOINT` and `TTS_ENDPOINT`: adapter endpoints. STT accepts raw audio with its MIME type and returns `{"text":"…"}`; TTS accepts `{"text":"…","voice":"en-IN"}` and returns audio bytes.
 - `VOICE_PROVIDER_API_KEY`: optional bearer credential shared by those adapters.
 - `MOCK_LATENCY_MIN_MS`, `MOCK_LATENCY_MAX_MS`, and `MOCK_FAILURE_RATE`: injected backend latency and failure profile.

@@ -3,7 +3,7 @@ artifact-type: system-design
 subject: Enterprise AI Loan Servicing Assistant (POC)
 version: 1
 supersedes: none
-generated-by: haptiq-bmad-generate-system-design
+generated-by: h-bmad-generate-system-design
 source-design:
   - enterprise-voice-agent-prd-v1.md
 ticket: none

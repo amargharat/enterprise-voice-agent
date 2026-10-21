@@ -3,7 +3,7 @@ artifact-type: sequence-diagram
 subject: Customer journeys J1 (EMI explain and prepayment), J2 (voice with interruption), J3 (failed payments and dispute)
 version: 1
 supersedes: none
-generated-by: haptiq-bmad-generate-sequence-diagram
+generated-by: h-bmad-generate-sequence-diagram
 source-design:
   - enterprise-voice-agent-system-design-v1.md
   - tool-platform-enterprise-systems-integration-design-v1.md

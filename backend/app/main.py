@@ -32,7 +32,7 @@ from starlette.websockets import WebSocketDisconnected
 
 from .domain import money, prepayment_savings
 from .human_handoff import human_handoff
-from .orchestrator import orchestrator
+from .orchestrator import TurnPlan, orchestrator
 from .rules_engine import rules_engine
 from .verifier import verify_rewrite
 from .platform.database import database
@@ -339,7 +339,10 @@ async def prepare_action(customer_id: str, workflow_id: str, action_type: str, s
         transaction = next(item for item in CUSTOMERS[customer_id]["card"]["transactions"] if item["transactionId"] == subject_ref)
         summary = f"Open a card transaction investigation for {transaction['merchant']} ({subject_ref}, {currency(transaction['amount'])})"
     elif action_type == "TICKET":
-        offer = human_handoff.prepare(subject_ref or "review the question that could not be answered safely", workflow_id)
+        reason = (subject_ref or "").strip()[:400]
+        if not reason:
+            raise HTTPException(status_code=422, detail="Describe what you need help with before preparing a service request.")
+        offer = human_handoff.prepare(reason, workflow_id)
         summary = offer.summary
     else:
         value = Decimal(amount or "0")
@@ -461,14 +464,20 @@ async def chat(request: ChatRequest) -> dict[str, Any]:
     if request.workflowId not in WORKFLOWS:
         raise HTTPException(status_code=404, detail="Unknown workflow.")
     if request.workflowId != session["workflowId"]:
+        session.pop("pending_service_request", None)
         session["workflowId"] = request.workflowId
     workflow = request.workflowId
     customer_id = session["customerId"]
     customer = CUSTOMERS[customer_id]
     message = request.message.strip()
     lowered = message.lower()
+    pending_service_request = bool(session.get("pending_service_request"))
     planner_started = time.perf_counter()
-    plan = await orchestrator.plan(message, workflow)
+    cancelling_request = pending_service_request and bool(re.search(r"\b(cancel|never mind|nevermind|stop)\b", lowered))
+    if pending_service_request:
+        plan = TurnPlan(intent="general" if cancelling_request else "service-request", tool_names=[] if cancelling_request else ["service-request.create"])
+    else:
+        plan = await orchestrator.plan(message, workflow)
     planner_ms = round((time.perf_counter() - planner_started) * 1000)
     intent = plan.intent
     correlation_id = str(uuid.uuid4())
@@ -477,7 +486,22 @@ async def chat(request: ChatRequest) -> dict[str, Any]:
     action = None
     suggestions: list[str] = []
 
-    if workflow == "credit-card":
+    if intent == "service-request":
+        if pending_service_request:
+            session.pop("pending_service_request", None)
+        reason = re.sub(r"\b(?:please|i|we|want|need|would|like|to|raise|open|create|submit|make|a|an|the|service|support|request|ticket|for|about|regarding|help|with|my|me|can|you)\b", " ", message, flags=re.IGNORECASE)
+        reason = re.sub(r"\s+", " ", reason).strip(" .,!?;:")
+        if not reason or reason.lower() in {"loan", "card", "credit card", "payment", "account", "issue", "support", "loan account", "credit card account"}:
+            session["pending_service_request"] = True
+            answer = "Sure. What would you like the servicing team to help with? Please describe the request in one sentence. I’ll show it to you for confirmation before submitting."
+            suggestions = ["Update my contact details", "Call me about my account", "I need help with a failed payment debit"]
+        else:
+            action = await prepare_action(customer_id, workflow, "TICKET", reason, None, request.sessionId)
+            answer = f"I’ve prepared a service request for review: {action['summary']}. Please confirm to submit it; nothing has been sent yet."
+    elif cancelling_request:
+        session.pop("pending_service_request", None)
+        answer = "No problem. I cancelled the service request. Nothing was submitted."
+    elif workflow == "credit-card":
         card = customer["card"]
         if intent == "card-dispute":
             specs = [("card.statement", "PAYMENTS", "GET /v1/cards/{cardId}/statement", {"cardId": card["cardId"], "statementBalance": card["statementBalance"], "dueDate": card["dueDate"], "minimumDue": card["minimumDue"], "transactions": card["transactions"]}), ("policy.lookup", "POLICY", "GET /v1/policies/rules?topic=CARD_DISPUTE", POLICIES["CARD_DISPUTE"])]
@@ -646,7 +670,7 @@ async def chat(request: ChatRequest) -> dict[str, Any]:
 
     verifier = next((item for item in evidence if item.get("type") == "verification"), None)
     composition_started = time.perf_counter()
-    model_candidate = await orchestrator.compose(message, answer, evidence)
+    model_candidate = None if intent == "service-request" or cancelling_request else await orchestrator.compose(message, answer, evidence)
     planner_ms += round((time.perf_counter() - composition_started) * 1000)
     if model_candidate:
         accepted, reasons = verify_rewrite(answer, model_candidate)

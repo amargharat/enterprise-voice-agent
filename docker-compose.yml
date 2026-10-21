@@ -11,6 +11,8 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./backend/migrations/001_core_seed.sql:/docker-entrypoint-initdb.d/001_core_seed.sql:ro
       - ./backend/migrations/002_rule_condition_ast.sql:/docker-entrypoint-initdb.d/002_rule_condition_ast.sql:ro
+    ports:
+      - "127.0.0.1:5434:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U voice_agent -d voice_agent"]
       interval: 5s

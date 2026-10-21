@@ -15,7 +15,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from .platform.tool_gateway import ToolGatewayError, ToolRegistry
 
-Intent = Literal["card-dispute", "card-summary", "payment-dispute", "failed-payments", "last-payment", "next-emi", "foreclosure", "prepayment", "general"]
+Intent = Literal["card-dispute", "card-summary", "payment-dispute", "failed-payments", "last-payment", "next-emi", "foreclosure", "prepayment", "service-request", "general"]
 
 
 class TurnPlan(BaseModel):
@@ -41,7 +41,7 @@ class Orchestrator:
         safe_message = self._mask_user_text(message)
         prompt = {
             "role": "system",
-            "content": "Classify the customer request. Return JSON only: {intent, tool_names}. Select only tools from the supplied allowlist. Never request customer identity. Supported intents: card-dispute, card-summary, payment-dispute, failed-payments, last-payment, next-emi, foreclosure, prepayment, general. A money calculation always uses the prepayment tool plan; never calculate numbers.",
+            "content": "Classify the customer request. Return JSON only: {intent, tool_names}. Select only tools from the supplied allowlist. Never request customer identity. Supported intents: card-dispute, card-summary, payment-dispute, failed-payments, last-payment, next-emi, foreclosure, prepayment, service-request, general. Use service-request when the customer asks to raise, create, open, submit, or make a servicing request or support ticket. A money calculation always uses the prepayment tool plan; never calculate numbers.",
         }
         request_body = {
             "model": self.model,
@@ -51,7 +51,7 @@ class Orchestrator:
         }
         headers = {"Authorization": f"Bearer {self.api_key}"} if self.api_key else {}
         try:
-            async with httpx.AsyncClient(timeout=httpx.Timeout(1.2)) as client:
+            async with httpx.AsyncClient(timeout=httpx.Timeout(30.0)) as client:
                 response = await client.post(f"{self.base_url}/chat/completions", json=request_body, headers=headers)
                 response.raise_for_status()
             raw = response.json()["choices"][0]["message"]["content"]
@@ -79,7 +79,7 @@ class Orchestrator:
         }
         headers = {"Authorization": f"Bearer {self.api_key}"} if self.api_key else {}
         try:
-            async with httpx.AsyncClient(timeout=httpx.Timeout(2.5)) as client:
+            async with httpx.AsyncClient(timeout=httpx.Timeout(30.0)) as client:
                 response = await client.post(f"{self.base_url}/chat/completions", json=payload, headers=headers)
                 response.raise_for_status()
             text = response.json()["choices"][0]["message"]["content"]
@@ -99,6 +99,8 @@ class Orchestrator:
         if workflow_id == "credit-card":
             if any(word in text for word in ("dispute", "unauthorized", "unknown transaction")):
                 intent, tools = "card-dispute", ["card.statement", "policy.lookup"]
+            elif Orchestrator._asks_for_service_request(text):
+                intent, tools = "service-request", ["service-request.create"]
             else:
                 intent, tools = "card-summary", ["card.summary", "card.statement"]
         elif any(word in text for word in ("failed", "failure")) and "payment" in text:
@@ -115,11 +117,24 @@ class Orchestrator:
             intent, tools = "foreclosure", ["loan.detail", "policy.lookup"]
         elif any(word in text for word in ("emi", "prepay", "pre-payment", "interest saved", "tenure")):
             intent, tools = "prepayment", ["loan.detail", "loan.rate-history", "policy.lookup", "payments.history"]
+        elif Orchestrator._asks_for_service_request(text):
+            intent, tools = "service-request", ["service-request.create"]
         elif "payment" in text:
             intent, tools = "next-emi", ["loan.summary"]
         else:
             intent, tools = "general", ["loan.summary"] if workflow_id == "loan-servicing" else ["card.summary"]
         return TurnPlan(intent=intent, tool_names=tools)
+
+    @staticmethod
+    def _asks_for_service_request(text: str) -> bool:
+        return any(phrase in text for phrase in (
+            "raise a request", "raise request", "open a request", "open request",
+            "create a request", "create request", "submit a request", "submit request",
+            "make a request", "make request", "service request", "service ticket",
+            "support ticket", "raise a ticket", "open a ticket", "create a ticket",
+            "contact support", "need support", "need help", "speak to an agent",
+            "talk to a person",
+        )) or bool(re.search(r"\b(?:raise|open|create|submit)\b.{0,40}\b(?:request|ticket)\b", text))
 
 
 orchestrator = Orchestrator(ToolRegistry())

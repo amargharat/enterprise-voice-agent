@@ -3,7 +3,7 @@ artifact-type: integration-design
 subject: Tool Platform to Enterprise Systems (CRM, Loan Management, Payments, Policy Knowledge, Service Operations)
 version: 1
 supersedes: none
-generated-by: haptiq-bmad-generate-integration-design
+generated-by: h-bmad-generate-integration-design
 source-design:
   - enterprise-voice-agent-system-design-v1.md
   - enterprise-voice-agent-prd-v1.md
