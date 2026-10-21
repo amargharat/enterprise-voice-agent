@@ -1,0 +1,67 @@
+# ─────────────────────────────────────────────────────────────────
+# Haptiq BMAD — project env file.
+#
+# The PROJECT LEAD fills this in ONCE and commits it. Every associate on the
+# project inherits these exact settings — no per-user configuration, no drift.
+#
+# Location: _bmad/custom/haptiq-project.toml  (committed; the installer never
+# touches _bmad/custom/). `haptiq-bmad-init` reads this to generate the shared
+# project-context.md.
+#
+# Replace every  TODO  with a real value, then run:  haptiq-bmad-init
+# ─────────────────────────────────────────────────────────────────
+
+[project]
+name           = "Enterprise Text and Voice AI Assistant"          # customer / project name
+type           = "greenfield"          # greenfield | brownfield
+domain_summary = "Web app where customers of a personal loans, credit cards and financial products company interact with an AI assistant via text and voice"          # one line: what this system does
+
+[stack]
+languages   = ""             # e.g. "TypeScript, Python"
+frameworks  = ""             # e.g. "React, FastAPI"
+datastores  = ""             # e.g. "PostgreSQL 16, Redis"
+messaging   = ""                 # e.g. "Kafka" — leave blank if none
+hosting     = ""             # e.g. "AWS (eu-west-1), ECS Fargate"
+
+[standards]
+# Cloud/vendor guardrails the design agents must honour on every artifact.
+cloud_only        = ""       # e.g. "AWS-only — do not propose GCP/Azure"
+api_style         = ""       # e.g. "REST + OpenAPI 3.1; events via AsyncAPI"
+integration_style = ""           # e.g. "async-first; sync only for read paths"
+
+[compliance]
+# Drives the data-design PII rules and privacy assessments.
+regimes           = ""           # e.g. "GDPR, SOC2" — blank if none
+data_residency    = ""           # e.g. "EU only"
+pii_handling      = ""           # any project-specific PII rule
+
+[artifacts]
+# Whether generate-*/review-* skill output gets saved to disk in addition to
+# chat, under output_folder/planning-artifacts (Design) or
+# output_folder/implementation-artifacts (Dev-BE).
+persist_outputs = ""         # y | n
+
+[testing]
+# Optional. Leave both blank to auto-detect from the project's own build
+# tooling (package.json scripts, pyproject.toml/tox.ini, Makefile, go.mod,
+# pom.xml/build.gradle) — that is the primary source and stays correct as
+# the project's tooling evolves. Fill these in only to remove ambiguity
+# (e.g. several candidate scripts) or when no command is auto-detectable.
+test_command     = ""            # e.g. "npm test", "pytest -x", "mvn test", "go test ./..."
+coverage_command  = ""           # e.g. "npm run test:coverage", "pytest --cov". Blank if
+                                  # test_command already reports coverage, or none is configured.
+
+[publish]
+# Optional defaults for the artifact publishing commands (DOCX / CONF / GDOC). Leave any
+# of them blank to be asked at the time. NEVER put an API token here — this file is
+# committed; the Confluence token comes from your shell environment
+# ($CONFLUENCE_API_TOKEN), not from this file.
+confluence_base_url = ""         # e.g. "https://haptiq.atlassian.net"
+confluence_space    = ""         # space key, e.g. "PROJ"
+confluence_parent   = ""         # page ID or title that published artifacts get filed under
+gdrive_folder       = ""         # Drive folder link or ID for uploaded artifacts
+docx_reference_doc  = ""         # path to a branded .docx whose styles pandoc should reuse
+
+# Anything below is appended verbatim to project-context.md as extra rules.
+[notes]
+extra_rules = ""
