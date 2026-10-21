@@ -1,0 +1,127 @@
+# Generated from design: enterprise-voice-agent-system-design-v1.md (v1)
+# Ticket: none
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: voice_agent
+      POSTGRES_USER: voice_agent
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-demo_only_change_me}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/migrations/001_core_seed.sql:/docker-entrypoint-initdb.d/001_core_seed.sql:ro
+      - ./backend/migrations/002_rule_condition_ast.sql:/docker-entrypoint-initdb.d/002_rule_condition_ast.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U voice_agent -d voice_agent"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+
+  mock-enterprise:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    command: ["uvicorn", "mock_enterprise.main:app", "--host", "0.0.0.0", "--port", "8001"]
+    environment:
+      MOCK_SERVICE_TOKEN: ${MOCK_SERVICE_TOKEN:-local-demo-service}
+      MOCK_FAILURE_RATE: ${MOCK_FAILURE_RATE:-0.05}
+      MOCK_LATENCY_MIN_MS: ${MOCK_LATENCY_MIN_MS:-100}
+      MOCK_LATENCY_MAX_MS: ${MOCK_LATENCY_MAX_MS:-3000}
+      DATABASE_URL: postgresql+asyncpg://voice_agent:${POSTGRES_PASSWORD:-demo_only_change_me}@postgres:5432/voice_agent
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8001:8001"
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    command: ["uvicorn", "backend.app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    environment:
+      DATABASE_URL: postgresql+asyncpg://voice_agent:${POSTGRES_PASSWORD:-demo_only_change_me}@postgres:5432/voice_agent
+      REDIS_URL: redis://redis:6379/0
+      MOCK_ENTERPRISE_URL: http://mock-enterprise:8001
+      MOCK_SERVICE_TOKEN: ${MOCK_SERVICE_TOKEN:-local-demo-service}
+      CORS_ORIGINS: http://localhost:5173
+      LLM_BASE_URL: ${LLM_BASE_URL:-}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_MODEL: ${LLM_MODEL:-}
+      STT_ENDPOINT: ${STT_ENDPOINT:-}
+      TTS_ENDPOINT: ${TTS_ENDPOINT:-}
+      VOICE_PROVIDER_API_KEY: ${VOICE_PROVIDER_API_KEY:-}
+      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://otel-collector:4318/v1/traces
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mock-enterprise:
+        condition: service_started
+      otel-collector:
+        condition: service_started
+    ports:
+      - "8000:8000"
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.120.0
+    command: ["--config=/etc/otelcol-contrib/config.yml"]
+    volumes:
+      - ./observability/otel-collector.yml:/etc/otelcol-contrib/config.yml:ro
+    ports:
+      - "4318:4318"
+
+  prometheus:
+    image: prom/prometheus:v3.2.1
+    command: ["--config.file=/etc/prometheus/prometheus.yml", "--storage.tsdb.retention.time=7d"]
+    volumes:
+      - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    depends_on:
+      - backend
+      - mock-enterprise
+    ports:
+      - "9090:9090"
+
+  grafana:
+    image: grafana/grafana:11.5.2
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-demo_only_change_me}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./observability/grafana/dashboards.json:/var/lib/grafana/dashboards/horizon-ops.json:ro
+    depends_on:
+      - prometheus
+    ports:
+      - "3000:3000"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: http://localhost:8000
+    depends_on:
+      - backend
+    ports:
+      - "5173:4173"
+
+volumes:
+  postgres_data:
+  redis_data:
+  prometheus_data:
+  grafana_data:

@@ -1,0 +1,12 @@
+# Generated from design: enterprise-voice-agent-system-design-v1.md (v1)
+# Ticket: none
+.git
+.venv
+**/__pycache__
+**/.pytest_cache
+frontend/node_modules
+frontend/dist
+*.sqlite3
+.env
+.env.*
+!.env.example

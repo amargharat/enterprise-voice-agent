@@ -1,0 +1,17 @@
+{
+  "tools": {
+    "loan.summary": {"system":"LOAN","method":"GET","path":"/v1/customers/{customerId}/loans","mode":"read","scope":"loans:read","timeout_ms":2500,"cache_ttl_s":0,"arguments":{}},
+    "customer.profile": {"system":"CRM","method":"GET","path":"/v1/customers/{customerId}","mode":"read","scope":"customers:read","timeout_ms":1500,"cache_ttl_s":0,"arguments":{}},
+    "loan.detail": {"system":"LOAN","method":"GET","path":"/v1/loans/{loanId}","mode":"read","scope":"loans:read","timeout_ms":2500,"cache_ttl_s":0,"arguments":{"loanId":"loan-id"}},
+    "loan.rate-history": {"system":"LOAN","method":"GET","path":"/v1/loans/{loanId}/rate-history","mode":"read","scope":"loans:read","timeout_ms":2500,"cache_ttl_s":0,"arguments":{"loanId":"loan-id"}},
+    "payments.history": {"system":"PAYMENTS","method":"GET","path":"/v1/loans/{loanId}/payments","mode":"read","scope":"payments:read","timeout_ms":3500,"cache_ttl_s":0,"arguments":{"loanId":"loan-id","status":"optional","from":"optional","to":"optional","limit":"integer"}},
+    "policy.lookup": {"system":"POLICY","method":"GET","path":"/v1/policies/rules","mode":"read","scope":"policy:read","timeout_ms":2000,"cache_ttl_s":600,"arguments":{"productCode":"required","topic":"required"}},
+    "card.summary": {"system":"CRM","method":"GET","path":"/v1/cards/{cardId}","mode":"read","scope":"cards:read","timeout_ms":1500,"cache_ttl_s":0,"arguments":{"cardId":"card-id"}},
+    "card.statement": {"system":"PAYMENTS","method":"GET","path":"/v1/cards/{cardId}/statement","mode":"read","scope":"payments:read","timeout_ms":3500,"cache_ttl_s":0,"arguments":{"cardId":"card-id"}},
+    "service-request.create": {"system":"SERVICE_OPS","method":"POST","path":"/v1/service-requests","mode":"write","scope":"service-requests:write","timeout_ms":5000,"cache_ttl_s":0,"arguments":{"type":"required","subjectRef":"optional","summary":"required","loanId":"optional","cardId":"optional","amount":"optional"}}
+  },
+  "workflows": {
+    "loan-servicing": {"label":"Personal loan","tools":["customer.profile","loan.summary","loan.detail","loan.rate-history","payments.history","policy.lookup","service-request.create"]},
+    "credit-card": {"label":"Credit card","tools":["customer.profile","card.summary","card.statement","payments.history","policy.lookup","service-request.create"]}
+  }
+}

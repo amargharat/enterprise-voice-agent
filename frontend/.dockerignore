@@ -1,0 +1,5 @@
+# Generated from design: enterprise-voice-agent-system-design-v1.md (v1)
+# Ticket: none
+node_modules
+dist
+*.log

@@ -1,0 +1,18 @@
+# Generated from design: enterprise-voice-agent-system-design-v1.md (v1)
+# Ticket: none
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+processors:
+  batch:
+exporters:
+  debug:
+    verbosity: basic
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [debug]
